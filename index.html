@@ -37,7 +37,7 @@ button:disabled{opacity:.6}
 <div class="sun" aria-hidden="true"></div>
 <h1>Cartagena <em>con amigas</em></h1>
 <p>13 — 17 nov 2026 · Solo para el grupo. Escribe la contraseña que te compartieron.</p>
-<label class="f" for="pw">Contraseña<input type="password" id="pw" required autofocus></label>
+<label class="f" for="pw">Contraseña<input type="password" id="pw" required autofocus autocapitalize="none" autocorrect="off" spellcheck="false"></label>
 <label class="rem"><input type="checkbox" id="rem" checked> Recordar en este teléfono</label>
 <button id="go">Entrar</button>
 <div class="err" id="err" role="alert"></div>
@@ -51,7 +51,7 @@ async function derive(pw){const base=await crypto.subtle.importKey('raw',te.enco
 async function dec(key,buf){const u=new Uint8Array(buf);return crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(0,12)},key,u.slice(12))}
 async function open(key){
   await dec(key,ub64(meta.check));
-  const [app,...fotos]=await Promise.all(['app',...meta.fotos].map(n=>fetch('d-'+n+'.bin').then(r=>{if(!r.ok)throw new Error('net');return r.arrayBuffer()}).then(b=>dec(key,b))));
+  const [app,...fotos]=await Promise.all(['app',...meta.fotos].map(n=>fetch('d-'+n+'.bin',{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error('net');return r.arrayBuffer()}).then(b=>dec(key,b))));
   window.__F={};meta.fotos.forEach((n,i)=>{window.__F[n]=URL.createObjectURL(new Blob([fotos[i]],{type:'image/jpeg'}))});
   let html=td.decode(app).split('__F_portada__').join(window.__F.portada);
   document.open();document.write(html);document.close();
@@ -60,11 +60,11 @@ const err=document.getElementById('err'),btn=document.getElementById('go');
 try{const saved=localStorage.getItem('ctg-key');if(saved){btn.disabled=true;btn.textContent='Abriendo…';const k=await crypto.subtle.importKey('raw',ub64(saved),'AES-GCM',true,['decrypt']);await open(k);return}}catch(e){try{localStorage.removeItem('ctg-key')}catch(_){}btn.disabled=false;btn.textContent='Entrar'}
 document.getElementById('gate').addEventListener('submit',async e=>{
   e.preventDefault();err.textContent='';btn.disabled=true;btn.textContent='Abriendo…';
-  try{const k=await derive(document.getElementById('pw').value.trim());
+  try{const k=await derive(document.getElementById('pw').value.toLowerCase().replace(/\s+/g,''));
     try{await dec(k,ub64(meta.check))}catch(_){throw new Error('pw')}
     if(document.getElementById('rem').checked){try{localStorage.setItem('ctg-key',b64(await crypto.subtle.exportKey('raw',k)))}catch(_){}}
     await open(k);
-  }catch(x){err.textContent=x.message==='pw'?'Contraseña incorrecta. Revisa mayúsculas y guiones.':'No se pudo abrir. Revisa tu conexión e intenta de nuevo.';btn.disabled=false;btn.textContent='Entrar'}
+  }catch(x){err.textContent=x.message==='pw'?'Contraseña incorrecta. Revísala e intenta de nuevo.':'No se pudo abrir. Revisa tu conexión e intenta de nuevo.';btn.disabled=false;btn.textContent='Entrar'}
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
